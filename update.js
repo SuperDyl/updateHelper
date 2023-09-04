@@ -58,36 +58,8 @@ const executeCommand = async (command, directory) => {
   });
 };
 
-// Create a queue to handle requests one at a time
-const requestQueue = [];
-const requestMutex = new Mutex();
-const semaphore = new Semaphore(0);
-
-// Middleware to add requests to the queue
-app.use("/", async (req, res, next) => {
-  try {
-    requestQueue.push({
-      commands: config.commands,
-      res,
-    });
-
-    // Process the queue if it's not already being processed
-    if (requestQueue.length === 1) {
-      processQueue();
-    }
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // Function to process the queue
-const processQueue = async () => {
-  if (requestQueue.length === 0) {
-    return;
-  }
-
-  const { commands, res } = requestQueue.shift();
-
+const processQueue = async (commands, res) => {
   try {
     for (const { command, directory } of commands) {
       await executeCommand(command, path.join("../", directory));
@@ -98,6 +70,15 @@ const processQueue = async () => {
     res.status(500).json({ error: error.message });
   }
 };
+
+app.post("/", async (req, res, next) => {
+  try {
+    const { commands } = config;
+    processQueue(commands, res);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 app.listen(port, () => {
   console.log(`Server is listening on port ${port}`);
