@@ -1,10 +1,12 @@
 const express = require("express");
+const expressQueue = require("express-queue");
 const { exec } = require("child_process");
 const fs = require("fs").promises;
 const path = require("path");
 
 const app = express();
 app.use(express.json());
+app.use(expressQueue({ activeLimit: 1, queuedLimit: 2 }));
 
 const port = process.argv[2] || 3000; // Use the provided port or default to 3000
 if (isNaN(port) || port < 1 || port > 65535) {
@@ -16,10 +18,6 @@ if (isNaN(port) || port < 1 || port > 65535) {
 
 const websiteName = process.argv[3] || "NoNameWebsite";
 
-// Create a queue to handle requests one at a time
-const requestQueue = [];
-let isProcessingRequest = false;
-
 const configFilePath = path.join("../", "update-config.json");
 let config = null;
 
@@ -27,7 +25,7 @@ try {
   const configData = await fs.readFile(configFilePath, "utf8");
   config = JSON.parse(configData);
 } catch (error) {
-  console.error(`Error loading config file 'configFilePath'\n${error}`);
+  console.error(`Error loading config file '${configFilePath}'`, error);
   process.exit(1);
 }
 
@@ -60,18 +58,21 @@ const executeCommand = async (command, directory) => {
   });
 };
 
+// Create a queue to handle requests one at a time
+const requestQueue = [];
+const requestMutex = new Mutex();
+const semaphore = new Semaphore(0);
+
 // Middleware to add requests to the queue
 app.use("/", async (req, res, next) => {
   try {
-    // Add the request to the queue
     requestQueue.push({
       commands: config.commands,
       res,
     });
 
     // Process the queue if it's not already being processed
-    if (!isProcessingRequest) {
-      isProcessingRequest = true;
+    if (requestQueue.length === 1) {
       processQueue();
     }
   } catch (error) {
@@ -82,7 +83,6 @@ app.use("/", async (req, res, next) => {
 // Function to process the queue
 const processQueue = async () => {
   if (requestQueue.length === 0) {
-    isProcessingRequest = false;
     return;
   }
 
@@ -96,9 +96,6 @@ const processQueue = async () => {
     res.status(200).json({ message: "Update commands completed successfully" });
   } catch (error) {
     res.status(500).json({ error: error.message });
-  } finally {
-    // Continue processing the queue
-    processQueue();
   }
 };
 
