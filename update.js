@@ -4,6 +4,29 @@ const { exec } = require("child_process");
 const fs = require("fs").promises;
 const path = require("path");
 
+/*
+Setup:
+pm2 start update.js --name SOME_NAME -- PORT WEBSITE
+
+Config example: (store as update-config.json in the root folder)
+{
+  commands: [
+    {
+      command: "npm install",
+      directory: "back-end",
+    },
+    {
+      command: "npm install",
+      directory: "front-end",
+    },
+    {
+      command: "npm run build",
+      directory: "front-end",
+    },
+  ],
+}
+*/
+
 const app = express();
 app.use(express.json());
 app.use(expressQueue({ activeLimit: 1, queuedLimit: 2 }));
@@ -36,16 +59,18 @@ const executeCommand = async (command, directory) => {
       command,
       { cwd: directory },
       (error, stdout, stderr) => {
-        if (error) {
-          console.error(
-            `Error executing command "${command}" in "${directory}":`,
-            error
-          );
-          reject(error);
-        }
         console.log(stdout);
         console.error(stderr);
-        resolve();
+        if (!error) {
+          resolve();
+          return;
+        }
+        //else
+        console.error(
+          `Error executing command "${command}" in "${directory}":`,
+          error
+        );
+        reject(error);
       }
     );
 
@@ -59,22 +84,17 @@ const executeCommand = async (command, directory) => {
 };
 
 // Function to process the queue
-const processQueue = async (commands, res) => {
-  try {
-    for (const { command, directory } of commands) {
-      await executeCommand(command, path.join("../", directory));
-    }
-
-    res.status(200).json({ message: "Update commands completed successfully" });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+const processCommands = async (commands, res) => {
+  for (const { command, directory } of commands) {
+    await executeCommand(command, path.join("../", directory));
   }
 };
 
 app.post("/", async (req, res, next) => {
   try {
     const { commands } = config;
-    processQueue(commands, res);
+    processCommands(commands, res);
+    res.status(200).json({ message: "Update commands completed successfully" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
