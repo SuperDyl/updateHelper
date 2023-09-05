@@ -7,10 +7,16 @@ const path = require("path");
 /*
 Setup:
 pm2 start update.js --name SOME_NAME -- PORT WEBSITE
+Optionally, you can include CONFIG_PATH as the final argument. Path should be from project ROOT
 
 Config example: (store as update-config.json in the root folder)
 {
   commands: [
+    {
+      command: "git pull",
+      directory: "./",
+      failOnText: Already up to date.",
+    },
     {
       command: "npm install",
       directory: "back-end",
@@ -40,8 +46,9 @@ if (isNaN(port) || port < 1 || port > 65535) {
 }
 
 const websiteName = process.argv[3] || "NoNameWebsite";
+const configFilePath = process.argv[4] || "update-config.json";
 
-const configFilePath = path.join("../", "update-config.json");
+const configFilePath = path.join("../", configFilePath);
 let config = null;
 
 try {
@@ -62,7 +69,7 @@ const executeCommand = async (command, directory) => {
         console.log(stdout);
         console.error(stderr);
         if (!error) {
-          resolve();
+          resolve({ stdout, stderr });
           return;
         }
         //else
@@ -85,8 +92,19 @@ const executeCommand = async (command, directory) => {
 
 // Function to process the queue
 const processCommands = async (commands, res) => {
-  for (const { command, directory } of commands) {
-    await executeCommand(command, path.join("../", directory));
+  for (const { command, directory, failOnText } of commands) {
+    const { stdout } = await executeCommand(
+      command,
+      path.join("../", directory)
+    );
+
+    if (failOnText !== undefined && stdout.includes(failOnText)) {
+      reject(
+        new Error(
+          `Extra fail case occurred of '${failOnText}' for command '${command}'`
+        )
+      );
+    }
   }
 };
 
