@@ -4,35 +4,6 @@ const { exec } = require("child_process");
 const fs = require("fs").promises;
 const path = require("path");
 
-/*
-Setup:
-pm2 start update.js --name SOME_NAME -- PORT WEBSITE
-Optionally, you can include CONFIG_PATH as the final argument. Path should be from project ROOT
-
-Config example: (store as update-config.json in the root folder)
-{
-  commands: [
-    {
-      command: "git pull",
-      directory: "./",
-      failOnText: Already up to date.",
-    },
-    {
-      command: "npm install",
-      directory: "back-end",
-    },
-    {
-      command: "npm install",
-      directory: "front-end",
-    },
-    {
-      command: "npm run build",
-      directory: "front-end",
-    },
-  ],
-}
-*/
-
 const app = express();
 app.use(express.json());
 app.use(expressQueue({ activeLimit: 1, queuedLimit: 2 }));
