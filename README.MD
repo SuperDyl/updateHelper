@@ -6,16 +6,16 @@ Some node code to help with updating a project automatically by listening for a 
 
 ```bash
 npm i
-pm2 start update.js --name SOME_NAME -- PORT WEBSITE CONFIG_PATH
+pm2 start update.js --name SOME_NAME -- --port PORT --name SOME_NAME --config CONFIG_PATH
 ```
 
 **SOME_NAME**: *OPTIONAL* A name for pm2 to call this service
 
 **PORT**: The port the server listens on (DEFAULT: 3000)
 
-**WEBSITE**: A name for the website in logs (DEFAULT: NoNameWebsite)
+**SOME_NAME**: Must match the name given to pm2
 
-**CONFIG_PATH**: Location of the config file (DEFAULT: ROOT/hi)
+**CONFIG_PATH**: *OPTIONAL* Location of the config file (DEFAULT: ROOT/update-config.json)
 
 Optionally, you can include CONFIG_PATH as the final argument.
 It's Path should be from project ROOT
