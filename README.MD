@@ -6,7 +6,7 @@ Some node code to help with updating a project automatically by listening for a 
 
 ```bash
 npm i
-pm2 start update.js --name SOME_NAME -- --port PORT --name SOME_NAME --config CONFIG_PATH
+pm2 start ./updateHelper/update.js --name SOME_NAME -- --port PORT --name SOME_NAME --config CONFIG_PATH
 ```
 
 **SOME_NAME**: *OPTIONAL* A name for pm2 to call this service
@@ -36,21 +36,21 @@ Example:
     {
       "command": "git pull",
       "directory": "./",
-      "failOnText": "Already up to date.",
+      "failOnText": "Already up to date."
     },
     {
       "command": "npm install",
-      "directory": "back-end",
+      "directory": "back-end"
     },
     {
       "command": "npm install",
-      "directory": "front-end",
+      "directory": "front-end"
     },
     {
       "command": "npm run build",
-      "directory": "front-end",
-    },
-  ],
+      "directory": "front-end"
+    }
+  ]
 }
 ```
 

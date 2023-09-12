@@ -1,7 +1,7 @@
 const express = require("express");
 const expressQueue = require("express-queue");
 const { exec } = require("child_process");
-const fs = require("fs").promises;
+const fs = require("fs");
 const path = require("path");
 
 const yargs = require("yargs");
@@ -34,7 +34,7 @@ const options = yargs
 
 const port = options.port;
 const serverName = options.serverName;
-const configFilePath = path.join("../", options.configPath);
+const configFilePath = options.configPath; //path.join("../", options.configPath);
 
 const app = express();
 app.use(express.json());
@@ -42,7 +42,7 @@ app.use(expressQueue({ activeLimit: 1, queuedLimit: 2 }));
 
 let config = null;
 try {
-  const configData = await fs.readFile(configFilePath, "utf8");
+  const configData = fs.readFileSync(configFilePath, "utf8");
   config = JSON.parse(configData);
 } catch (error) {
   console.error(`Error loading config file '${configFilePath}'`, error);
@@ -56,8 +56,7 @@ const executeCommand = async (command, directory) => {
       command,
       { cwd: directory },
       (error, stdout, stderr) => {
-        console.log(stdout);
-        console.error(stderr);
+        console.log(`Executing command "${command}" in "${directory}"...`);
         if (!error) {
           resolve({ stdout, stderr });
           return;
@@ -85,8 +84,10 @@ const processCommands = async (commands, res) => {
   for (const { command, directory, failOnText } of commands) {
     const { stdout } = await executeCommand(
       command,
-      path.join("../", directory)
+      directory // path.join("../", directory)
     );
+
+    console.log(stdout);
 
     if (failOnText !== undefined && stdout.includes(failOnText)) {
       reject(
@@ -101,8 +102,10 @@ const processCommands = async (commands, res) => {
 app.post("/", async (req, res, next) => {
   try {
     const { commands } = config;
-    processCommands(commands, res);
+    await processCommands(commands, res);
     res.status(200).json({ message: "Update commands completed successfully" });
+
+    console.log(`Restarting pm2 instance ${serverName}`);
     const { stdout, stderr } = await executeCommand(
       `pm2 restart ${serverName}`,
       "../"
@@ -110,6 +113,7 @@ app.post("/", async (req, res, next) => {
     //should be unreachable!
     console.error(stderr);
   } catch (error) {
+    console.log("Attempted marked as failing");
     res.status(500).json({ error: error.message });
   }
 });
